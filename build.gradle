@@ -2,10 +2,16 @@ plugins {
     id "java"
 }
 
+archivesBaseName = "DietrichEvents"
 version = "1.0.0"
+group = "de.florianmichael"
 
 repositories {
 }
 
 dependencies {
+}
+
+jar {
+    from("LICENSE") { rename { "${it}_${project.archivesBaseName}" } }
 }
