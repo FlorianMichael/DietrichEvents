@@ -1,5 +1,5 @@
 # DietrichEvents
-Basic Java event system
+A fast and feature rich but still easy to use Event library for Java
 
 ## How to add this to your project
 Just copy this part to your *build.gradle*:
