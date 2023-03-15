@@ -1,7 +1,7 @@
 # DietrichEvents
 Basic Java event system
 
-## How to add this to your plugin
+## How to add this to your project
 Just copy this part to your *build.gradle*:
 ```groovy
 repositories {
