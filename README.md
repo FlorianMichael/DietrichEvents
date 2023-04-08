@@ -18,9 +18,9 @@ dependencies {
 
 ## Example usage
 ### Create instance
-You can use either **EventDispatcher.createThreadSafe()** or **EventDispatcher.createDefault()** to create an instance of the EventSystem, <br>
-if you want to specify the priority order and the mapping function yourself, there is also a normal **EventDispatcher.create()**. <br>
-For a thread safe EventDispatcher there is already a global instance that you can call with **EventDispatcher.g()**. <br>
+You can use either **EventDispatcher.createThreadSafe()** or **EventDispatcher.createDefault()** to create an instance of the EventSystem, 
+if you want to specify the priority order and the mapping function yourself, there is also a normal **EventDispatcher.create()**. 
+For a thread safe EventDispatcher there is already a global instance that you can call with **EventDispatcher.g()**.
 
 ### Create an Event
 ```java
