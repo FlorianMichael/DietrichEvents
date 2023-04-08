@@ -26,11 +26,37 @@ import java.util.function.Function;
 import java.util.function.IntSupplier;
 
 public class EventDispatcher {
-
-    private static final Function<Class<?>, Map<Object, Subscription<?>>> MAPPING_FUNCTION = key -> new ConcurrentHashMap<>();
-    private static final Comparator<Subscription<?>> PRIORITY_ORDER = Comparator.comparingInt(subscription -> conjugatePriority(subscription.getPrioritySupplier().getAsInt()));
+    private final static EventDispatcher GLOBAL = createThreadSafe();
 
     private final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions = new HashMap<>();
+
+    private final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction;
+    private final Comparator<Subscription<?>> priorityOrder;
+
+    protected EventDispatcher(Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction, Comparator<Subscription<?>> priorityOrder) {
+        this.mappingFunction = mappingFunction;
+        this.priorityOrder = priorityOrder;
+    }
+
+    public static EventDispatcher g() { // "g" for global -> faster access to class
+        return GLOBAL;
+    }
+
+    public static EventDispatcher createThreadSafe() {
+        return create(key -> new ConcurrentHashMap<>());
+    }
+
+    public static EventDispatcher createDefault() {
+        return create(key -> new HashMap<>());
+    }
+
+    public static EventDispatcher create(final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction) {
+        return create(mappingFunction, Comparator.comparingInt(subscription -> conjugatePriority(subscription.getPrioritySupplier().getAsInt())));
+    }
+
+    public static EventDispatcher create(final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction, final Comparator<Subscription<?>> priorityOrder) {
+        return new EventDispatcher(mappingFunction, priorityOrder);
+    }
 
     public <L extends Listener> void subscribe(Class<L> listenerType, L listener) {
         subscribe(listenerType, new Subscription<L>(listener));
@@ -45,7 +71,7 @@ public class EventDispatcher {
     }
 
     public <L extends Listener> void subscribe(Class<L> listenerType, Subscription<L> subscription) {
-        this.subscriptions.computeIfAbsent(listenerType, MAPPING_FUNCTION).put(subscription.getListenerType(), subscription);
+        this.subscriptions.computeIfAbsent(listenerType, this.mappingFunction).put(subscription.getListenerType(), subscription);
     }
 
     public <L extends Listener> void unsubscribe(Class<L> listenerType, L listener) {
@@ -63,7 +89,7 @@ public class EventDispatcher {
             if (subscriptions == null || subscriptions.isEmpty()) return event;
 
             final List<Subscription<?>> subscriptionList = new ArrayList<>(subscriptions.values());
-            subscriptionList.sort(PRIORITY_ORDER);
+            subscriptionList.sort(this.priorityOrder);
 
             for (Subscription<?> subscription : subscriptionList) {
                 event.getEventExecutor().execute((L) subscription.getListenerType());
@@ -76,7 +102,7 @@ public class EventDispatcher {
         return event;
     }
 
-    private static int conjugatePriority(int value) {
+    public static int conjugatePriority(int value) {
         if (value == Integer.MIN_VALUE) return Integer.MAX_VALUE;
         if (value == Integer.MAX_VALUE) return Integer.MIN_VALUE;
 

@@ -12,11 +12,16 @@ repositories {
 }
 
 dependencies {
-    implementation "com.github.FlorianMichael:DietrichEvents:1.0.0"
+    implementation "com.github.FlorianMichael:DietrichEvents:1.1.0"
 }
 ```
 
 ## Example usage
+### Create instance
+You can use either **EventDispatcher.createThreadSafe()** or **EventDispatcher.createDefault()** to create an instance of the EventSystem, <br>
+if you want to specify the priority order and the mapping function yourself, there is also a normal **EventDispatcher.create()**. <br>
+For a thread safe EventDispatcher there is already a global instance that you can call with **EventDispatcher.g()**. <br>
+
 ### Create an Event
 ```java
 public interface ExampleListener extends Listener {
@@ -53,14 +58,12 @@ public interface ExampleListener extends Listener {
 ```java
 public class ExampleListenerUsage implements ExampleListener {
 
-    public final static EventDispatcher EVENT_DISPATCHER = new EventDispatcher();
-    
     public void registerListeners() {
-        EVENT_DISPATCHER.subscribe(ExampleListener.class, this);
+        EventDispatcher.g().subscribe(ExampleListener.class, this);
     }
 
     public void unregisterListeners() {
-        EVENT_DISPATCHER.unsubscribe(ExampleListener.class, this);
+        EventDispatcher.g().unsubscribe(ExampleListener.class, this);
     }
     
     @Override
@@ -75,7 +78,5 @@ public class ExampleListenerUsage implements ExampleListener {
 
 ### Calling an Event
 ```java
-ExampleListenerUsage.EVENT_DISPATCHER.post(new ExampleListener.ExampleEvent(EventStateType.PRE));
+EventDispatcher.g().post(new ExampleListener.ExampleEvent(EventStateType.PRE));
 ```
-
-#### You should create only one instance of the EventDispatcher, which should be stored in your main class. But of course you can create more than one
