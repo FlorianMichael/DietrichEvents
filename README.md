@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    implementation "com.github.FlorianMichael:DietrichEvents:1.1.0"
+    implementation "com.github.FlorianMichael:DietrichEvents:1.2.0"
 }
 ```
 
