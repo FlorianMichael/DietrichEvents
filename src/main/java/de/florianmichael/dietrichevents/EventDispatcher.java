@@ -22,24 +22,46 @@ import de.florianmichael.dietrichevents.handle.Subscription;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 
 public class EventDispatcher {
     private final static EventDispatcher GLOBAL = createThreadSafe();
+    public static EventDispatcher g() {
+        return GLOBAL;
+    }
 
     private final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions = new HashMap<>();
 
     private final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction;
-    private final Comparator<Subscription<?>> priorityOrder;
 
-    protected EventDispatcher(Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction, Comparator<Subscription<?>> priorityOrder) {
-        this.mappingFunction = mappingFunction;
+    private Comparator<Subscription<?>> priorityOrder = Comparator.comparingInt(subscription -> {
+        final int priority = subscription.getPrioritySupplier().getAsInt();
+        if (priority == Integer.MIN_VALUE) return Integer.MAX_VALUE;
+        if (priority == Integer.MAX_VALUE) return Integer.MIN_VALUE;
+        return -priority;
+    });
+
+    public void setPriorityOrder(Comparator<Subscription<?>> priorityOrder) {
         this.priorityOrder = priorityOrder;
     }
 
-    public static EventDispatcher g() { // "g" for global -> faster access to class
-        return GLOBAL;
+    private Consumer<Throwable> errorHandler = Throwable::printStackTrace;
+
+    public void setErrorHandler(Consumer<Throwable> errorHandler) {
+        this.errorHandler = errorHandler;
+    }
+
+    private BiConsumer<List<Subscription<?>>, Comparator<Subscription<?>>> sortCallback = List::sort;
+
+    public void setSortCallback(BiConsumer<List<Subscription<?>>, Comparator<Subscription<?>>> sortCallback) {
+        this.sortCallback = sortCallback;
+    }
+
+    protected EventDispatcher(Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction) {
+        this.mappingFunction = mappingFunction;
     }
 
     public static EventDispatcher createThreadSafe() {
@@ -51,11 +73,7 @@ public class EventDispatcher {
     }
 
     public static EventDispatcher create(final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction) {
-        return create(mappingFunction, Comparator.comparingInt(subscription -> conjugatePriority(subscription.getPrioritySupplier().getAsInt())));
-    }
-
-    public static EventDispatcher create(final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction, final Comparator<Subscription<?>> priorityOrder) {
-        return new EventDispatcher(mappingFunction, priorityOrder);
+        return new EventDispatcher(mappingFunction);
     }
 
     public <L extends Listener> void subscribe(Class<L> listenerType, L listener) {
@@ -80,32 +98,30 @@ public class EventDispatcher {
         } catch (Exception ignored) {}
     }
 
-    @SuppressWarnings("unchecked")
     public <L extends Listener, E extends AbstractEvent<L>> E post(E event) {
         try {
-            if (event.isAbort()) return event;
-
-            final Map<Object, Subscription<?>> subscriptions = this.subscriptions.get(event.getListenerType());
-            if (subscriptions == null || subscriptions.isEmpty()) return event;
-
-            final List<Subscription<?>> subscriptionList = new ArrayList<>(subscriptions.values());
-            subscriptionList.sort(this.priorityOrder);
-
-            for (Subscription<?> subscription : subscriptionList) {
-                event.getEventExecutor().execute((L) subscription.getListenerType());
-
-                if (event.isAbort()) return event;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+            return postInternal(event);
+        } catch (Throwable e) {
+            this.errorHandler.accept(e);
+            return event;
         }
-        return event;
     }
 
-    public static int conjugatePriority(int value) {
-        if (value == Integer.MIN_VALUE) return Integer.MAX_VALUE;
-        if (value == Integer.MAX_VALUE) return Integer.MIN_VALUE;
+    @SuppressWarnings("unchecked")
+    public <L extends Listener, E extends AbstractEvent<L>> E postInternal(E event) {
+        if (event.isAbort()) return event;
 
-        return -value;
+        final Map<Object, Subscription<?>> subscriptions = this.subscriptions.get(event.getListenerType());
+        if (subscriptions == null || subscriptions.isEmpty()) return event;
+
+        final List<Subscription<?>> subscriptionList = new ArrayList<>(subscriptions.values());
+        sortCallback.accept(subscriptionList, this.priorityOrder);
+
+        for (Subscription<?> subscription : subscriptionList) {
+            event.getEventExecutor().execute((L) subscription.getListenerType());
+
+            if (event.isAbort()) return event;
+        }
+        return event;
     }
 }

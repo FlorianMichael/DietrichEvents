@@ -19,8 +19,23 @@ dependencies {
 ## Example usage
 ### Create instance
 You can use either **EventDispatcher.createThreadSafe()** or **EventDispatcher.createDefault()** to create an instance of the EventSystem, 
-if you want to specify the priority order and the mapping function yourself, there is also a normal **EventDispatcher.create()**. 
+if you want to specify the mapping function yourself, there is also a normal **EventDispatcher.create()**. 
 For a thread safe EventDispatcher there is already a global instance that you can call with **EventDispatcher.g()**.
+
+### There are a few functions in DietrichEvents to implement parts of the event system yourself:
+
+This function allows you to override the comparator used for sorting the priorities: <br>
+**setPriorityOrder(Comparator<Subscription<?>> priorityOrder);**
+
+This function allows you to override the error handling: <br>
+**setErrorHandler(Consumer<Throwable> errorHandler);**
+
+This function allows you to replace the sorting algorithm used for sorting the priorities: <br>
+**setSortCallback(BiConsumer<List<Subscription<?>>, Comparator<Subscription<?>>> sortCallback);**
+
+### Usage with FastUtil
+To get an EventDispatcher that uses FastUtil, you can do this: <br>
+**EventDispatcher.create(key -> new Object2ObjectArrayMap<>());**
 
 ### Create an Event
 ```java
@@ -78,5 +93,6 @@ public class ExampleListenerUsage implements ExampleListener {
 
 ### Calling an Event
 ```java
+// You can use either the post or the postInternal function, where postInternal has no error handling.
 EventDispatcher.g().post(new ExampleListener.ExampleEvent(EventStateType.PRE));
 ```
