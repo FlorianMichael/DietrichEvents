@@ -15,3 +15,5 @@ dependencies {
 jar {
     from("LICENSE") { rename { "${it}_${project.archivesBaseName}" } }
 }
+
+sourceSets.main.java.srcDirs += ["src/main/deprecated"]
