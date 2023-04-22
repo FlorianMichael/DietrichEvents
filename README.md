@@ -1,6 +1,12 @@
 # DietrichEvents
 A fast and feature rich but still easy to use Event library for Java
 
+## Contact
+If you encounter any issues, please report them on the
+[issue tracker](https://github.com/FlorianMichael/DietrichEvents/issues).  
+If you just want to talk or need help with DietrichEvents feel free to join my
+[Discord](https://discord.gg/BwWhCHUKDf).
+
 ## How to add this to your project
 Just copy this part to your *build.gradle*:
 ```groovy
