@@ -89,7 +89,7 @@ public class DietrichEvents {
             for (Map.Entry<Class<?>, Map<Object, Subscription<?>>> entry : this.subscriptions.entrySet()) {
                 for (Subscription<?> subscription : entry.getValue().values()) {
                     if (subscription.getListenerType() == listener) {
-                        this.subscriptions.remove(entry.getKey());
+                        this.unsubscribe((Class<L>) entry.getKey(), (L) subscription.getListenerType());
                     }
                 }
             }
@@ -117,6 +117,9 @@ public class DietrichEvents {
     public <L extends Listener> void unsubscribe(Class<L> listenerType, L listener) {
         try {
             this.subscriptions.get(listenerType).remove(listener);
+            if (this.subscriptions.get(listenerType).isEmpty()) {
+                this.subscriptions.remove(listenerType);
+            }
         } catch (Exception e) {
             this.errorHandler.accept(e);
         }

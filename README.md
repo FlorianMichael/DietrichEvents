@@ -18,7 +18,7 @@ repositories {
 }
 
 dependencies {
-    implementation "com.github.FlorianMichael:DietrichEvents:1.2.0"
+    implementation "com.github.FlorianMichael:DietrichEvents:1.3.0"
 }
 ```
 
@@ -41,7 +41,7 @@ This function allows you to replace the sorting algorithm used for sorting the p
 
 ### Usage with FastUtil
 To get an DietrichEvents that uses FastUtil, you can do this: <br>
-**DietrichEvents.create(key -> new Object2ObjectArrayMap<>());**
+**DietrichEvents.create(new Object2ObjectArrayMap<>(), key -> new Object2ObjectArrayMap<>());**
 
 ### Create an Event
 ```java
