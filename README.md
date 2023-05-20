@@ -24,9 +24,9 @@ dependencies {
 
 ## Example usage
 ### Create instance
-You can use either **EventDispatcher.createThreadSafe()** or **EventDispatcher.createDefault()** to create an instance of the EventSystem, 
-if you want to specify the mapping function yourself, there is also a normal **EventDispatcher.create()**. 
-For a thread safe EventDispatcher there is already a global instance that you can call with **EventDispatcher.g()**.
+You can use either **DietrichEvents.createThreadSafe()** or **DietrichEvents.createDefault()** to create an instance of the EventSystem, 
+if you want to specify the mapping function yourself, there is also a normal **DietrichEvents.create()**. 
+For a thread safe DietrichEvents there is already a global instance that you can call with **DietrichEvents.global()**.
 
 ### There are a few functions in DietrichEvents to implement parts of the event system yourself:
 
@@ -40,8 +40,8 @@ This function allows you to replace the sorting algorithm used for sorting the p
 **setSortCallback(BiConsumer<List<Subscription<?>>, Comparator<Subscription<?>>> sortCallback);**
 
 ### Usage with FastUtil
-To get an EventDispatcher that uses FastUtil, you can do this: <br>
-**EventDispatcher.create(key -> new Object2ObjectArrayMap<>());**
+To get an DietrichEvents that uses FastUtil, you can do this: <br>
+**DietrichEvents.create(key -> new Object2ObjectArrayMap<>());**
 
 ### Create an Event
 ```java
@@ -80,11 +80,11 @@ public interface ExampleListener extends Listener {
 public class ExampleListenerUsage implements ExampleListener {
 
     public void registerListeners() {
-        EventDispatcher.g().subscribe(ExampleListener.class, this);
+        DietrichEvents.global().subscribe(ExampleListener.class, this);
     }
 
     public void unregisterListeners() {
-        EventDispatcher.g().unsubscribe(ExampleListener.class, this);
+        DietrichEvents.global().unsubscribe(ExampleListener.class, this);
     }
     
     @Override
@@ -100,5 +100,5 @@ public class ExampleListenerUsage implements ExampleListener {
 ### Calling an Event
 ```java
 // You can use either the post or the postInternal function, where postInternal has no error handling.
-EventDispatcher.g().post(new ExampleListener.ExampleEvent(EventStateType.PRE));
+DietrichEvents.global().post(new ExampleListener.ExampleEvent(EventStateType.PRE));
 ```
