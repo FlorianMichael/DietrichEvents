@@ -29,6 +29,7 @@ import java.util.function.IntSupplier;
 
 public class DietrichEvents {
     private final static DietrichEvents GLOBAL = createThreadSafe();
+
     public static DietrichEvents global() {
         return GLOBAL;
     }
@@ -69,19 +70,31 @@ public class DietrichEvents {
     }
 
     public static DietrichEvents createDefault() {
-        return create(new HashMap<>(), key -> new HashMap<>());
+        return create(new ConcurrentHashMap<>(), key -> new HashMap<>());
     }
 
     public static DietrichEvents create(final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions, final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction) {
         return new DietrichEvents(subscriptions, mappingFunction);
     }
 
-    public<L extends Listener> void subscribeAll(final L listener) {
+    public <L extends Listener> void subscribeAll(final Object listener) {
+        if (!Listener.class.isAssignableFrom(listener.getClass())) return;
+
+        subscribeAll((L) listener);
+    }
+
+    public <L extends Listener> void subscribeAll(final L listener) {
         for (Class<?> anInterface : listener.getClass().getInterfaces()) {
             if (Listener.class.isAssignableFrom(anInterface)) {
                 this.subscribe((Class<L>) anInterface, listener);
             }
         }
+    }
+
+    public <L extends Listener> void unsubscribeAll(final Object listener) {
+        if (!Listener.class.isAssignableFrom(listener.getClass())) return;
+
+        unsubscribeAll((L) listener);
     }
 
     public <L extends Listener> void unsubscribeAll(final L listener) {
