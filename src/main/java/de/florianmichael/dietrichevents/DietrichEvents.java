@@ -27,14 +27,13 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 
-public class EventDispatcher {
-    private final static EventDispatcher GLOBAL = createThreadSafe();
-    public static EventDispatcher g() {
+public class DietrichEvents {
+    private final static DietrichEvents GLOBAL = createThreadSafe();
+    public static DietrichEvents global() {
         return GLOBAL;
     }
 
-    private final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions = new HashMap<>();
-
+    private final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions;
     private final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction;
 
     private Comparator<Subscription<?>> priorityOrder = Comparator.comparingInt(subscription -> {
@@ -60,20 +59,43 @@ public class EventDispatcher {
         this.sortCallback = sortCallback;
     }
 
-    protected EventDispatcher(Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction) {
+    public DietrichEvents(final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions, final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction) {
+        this.subscriptions = subscriptions;
         this.mappingFunction = mappingFunction;
     }
 
-    public static EventDispatcher createThreadSafe() {
-        return create(key -> new ConcurrentHashMap<>());
+    public static DietrichEvents createThreadSafe() {
+        return create(new ConcurrentHashMap<>(), key -> new ConcurrentHashMap<>());
     }
 
-    public static EventDispatcher createDefault() {
-        return create(key -> new HashMap<>());
+    public static DietrichEvents createDefault() {
+        return create(new HashMap<>(), key -> new HashMap<>());
     }
 
-    public static EventDispatcher create(final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction) {
-        return new EventDispatcher(mappingFunction);
+    public static DietrichEvents create(final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions, final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction) {
+        return new DietrichEvents(subscriptions, mappingFunction);
+    }
+
+    public<L extends Listener> void subscribeAll(final L listener) {
+        for (Class<?> anInterface : listener.getClass().getInterfaces()) {
+            if (Listener.class.isAssignableFrom(anInterface)) {
+                this.subscribe((Class<L>) anInterface, listener);
+            }
+        }
+    }
+
+    public <L extends Listener> void unsubscribeAll(final L listener) {
+        try {
+            for (Map.Entry<Class<?>, Map<Object, Subscription<?>>> entry : this.subscriptions.entrySet()) {
+                for (Subscription<?> subscription : entry.getValue().values()) {
+                    if (subscription.getListenerType() == listener) {
+                        this.subscriptions.remove(entry.getKey());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            this.errorHandler.accept(e);
+        }
     }
 
     public <L extends Listener> void subscribe(Class<L> listenerType, L listener) {
@@ -95,7 +117,9 @@ public class EventDispatcher {
     public <L extends Listener> void unsubscribe(Class<L> listenerType, L listener) {
         try {
             this.subscriptions.get(listenerType).remove(listener);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            this.errorHandler.accept(e);
+        }
     }
 
     public <L extends Listener, E extends AbstractEvent<L>> E post(E event) {
