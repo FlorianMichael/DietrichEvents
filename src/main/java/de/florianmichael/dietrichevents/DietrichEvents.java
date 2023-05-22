@@ -144,10 +144,10 @@ public class DietrichEvents {
         }
     }
 
-    public void unsubscribeClass(final Object listener) {
+    public void unsubscribeClassUnsafe(final Object listener) {
         if (!Listener.class.isAssignableFrom(listener.getClass())) return;
 
-        unsubscribeClass(listener);
+        unsubscribeClass((Listener) listener);
     }
 
     @SuppressWarnings("unchecked")

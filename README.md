@@ -41,7 +41,7 @@ This function allows you to replace the sorting algorithm used for sorting the p
 
 ### Usage with FastUtil
 To get an DietrichEvents that uses FastUtil, you can do this: <br>
-**DietrichEvents.create(new Object2ObjectArrayMap<>(), key -> new Object2ObjectArrayMap<>());**
+**DietrichEvents.create(new ConcurrentHashMap<>(), Object2ObjectArrayMap::new);**
 
 ### Create an Event
 ```java
