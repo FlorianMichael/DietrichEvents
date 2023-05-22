@@ -22,10 +22,8 @@ import de.florianmichael.dietrichevents.handle.Subscription;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.IntSupplier;
+import java.util.function.*;
+import java.util.stream.Collectors;
 
 public class DietrichEvents {
     private final static DietrichEvents GLOBAL = createThreadSafe();
@@ -35,7 +33,7 @@ public class DietrichEvents {
     }
 
     private final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions;
-    private final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction;
+    private final Supplier<Map<Object, Subscription<?>>> mappingFunction;
 
     private Comparator<Subscription<?>> priorityOrder = Comparator.comparingInt(subscription -> {
         final int priority = subscription.getPrioritySupplier().getAsInt();
@@ -60,33 +58,58 @@ public class DietrichEvents {
         this.sortCallback = sortCallback;
     }
 
-    public DietrichEvents(final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions, final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction) {
+    public DietrichEvents(final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions, final Supplier<Map<Object, Subscription<?>>> mappingFunction) {
         this.subscriptions = subscriptions;
         this.mappingFunction = mappingFunction;
     }
 
     public static DietrichEvents createThreadSafe() {
-        return create(new ConcurrentHashMap<>(), key -> new ConcurrentHashMap<>());
+        return create(new ConcurrentHashMap<>(), ConcurrentHashMap::new);
     }
 
     public static DietrichEvents createDefault() {
-        return create(new ConcurrentHashMap<>(), key -> new HashMap<>());
+        return create(new ConcurrentHashMap<>(), HashMap::new);
     }
 
-    public static DietrichEvents create(final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions, final Function<Class<?>, Map<Object, Subscription<?>>> mappingFunction) {
+    public static DietrichEvents create(final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions, final Supplier< Map<Object, Subscription<?>>> mappingFunction) {
         return new DietrichEvents(subscriptions, mappingFunction);
     }
 
-    public <L extends Listener> void subscribeAll(final Object listener) {
+    public void subscribeClassUnsafe(final Object listener) {
         if (!Listener.class.isAssignableFrom(listener.getClass())) return;
 
-        subscribeAll((L) listener);
+        subscribeClassInternal(new Subscription<>((Listener) listener));
     }
 
-    public <L extends Listener> void subscribeAll(final L listener) {
-        for (Class<?> anInterface : listener.getClass().getInterfaces()) {
-            if (Listener.class.isAssignableFrom(anInterface)) {
-                this.subscribe((Class<L>) anInterface, listener);
+    public void subscribeClassUnsafe(final Object listener, final int priority) {
+        if (!Listener.class.isAssignableFrom(listener.getClass())) return;
+
+        subscribeClassInternal(new Subscription<>((Listener) listener, priority));
+    }
+
+    public void subscribeClassUnsafe(final Object listener, final IntSupplier priority) {
+        if (!Listener.class.isAssignableFrom(listener.getClass())) return;
+
+        subscribeClassInternal(new Subscription<>((Listener) listener, priority));
+    }
+
+    public void subscribeClass(final Listener listener) {
+        subscribeClassInternal(new Subscription<>(listener));
+    }
+
+    public void subscribeClass(final Listener listener, final int priority) {
+        subscribeClassInternal(new Subscription<>(listener, priority));
+    }
+
+    public void subscribeClass(final Listener listener, final IntSupplier priority) {
+        subscribeClassInternal(new Subscription<>(listener, priority));
+    }
+
+    @SuppressWarnings("unchecked")
+    public <L extends Listener> void subscribeClassInternal(final Subscription<L> subscription) {
+        for (Class<?> classInterface : subscription.getListenerType().getClass().getInterfaces()) {
+            if (Listener.class.isAssignableFrom(classInterface)) {
+                this.subscribeInternal((Class<L>) classInterface, subscription);
             }
         }
     }
@@ -94,9 +117,10 @@ public class DietrichEvents {
     public <L extends Listener> void unsubscribeAll(final Object listener) {
         if (!Listener.class.isAssignableFrom(listener.getClass())) return;
 
-        unsubscribeAll((L) listener);
+        unsubscribeAll(listener);
     }
 
+    @SuppressWarnings("unchecked")
     public <L extends Listener> void unsubscribeAll(final L listener) {
         try {
             for (Map.Entry<Class<?>, Map<Object, Subscription<?>>> entry : this.subscriptions.entrySet()) {
@@ -112,19 +136,22 @@ public class DietrichEvents {
     }
 
     public <L extends Listener> void subscribe(Class<L> listenerType, L listener) {
-        subscribe(listenerType, new Subscription<L>(listener));
+        subscribeInternal(listenerType, new Subscription<>(listener));
     }
 
     public <L extends Listener> void subscribe(Class<L> listenerType, L listener, int priority) {
-        subscribe(listenerType, new Subscription<L>(listener, priority));
+        subscribeInternal(listenerType, new Subscription<>(listener, priority));
     }
 
     public <L extends Listener> void subscribe(Class<L> listenerType, L listener, IntSupplier priority) {
-        subscribe(listenerType, new Subscription<L>(listener, priority));
+        subscribeInternal(listenerType, new Subscription<>(listener, priority));
     }
 
-    public <L extends Listener> void subscribe(Class<L> listenerType, Subscription<L> subscription) {
-        this.subscriptions.computeIfAbsent(listenerType, this.mappingFunction).put(subscription.getListenerType(), subscription);
+    public <L extends Listener> void subscribeInternal(Class<L> listenerType, Subscription<L> subscription) {
+        final Map<Object, Subscription<?>> subscriptionMap = this.subscriptions.computeIfAbsent(listenerType, value -> this.mappingFunction.get());
+        subscriptionMap.put(subscription.getListenerType(), subscription);
+
+        this.subscriptions.put(listenerType, subscriptionMap.entrySet().stream().sorted(Map.Entry.comparingByValue(this.priorityOrder)).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> oldValue, ConcurrentHashMap::new)));
     }
 
     public <L extends Listener> void unsubscribe(Class<L> listenerType, L listener) {
@@ -138,24 +165,34 @@ public class DietrichEvents {
         }
     }
 
-    public <L extends Listener, E extends AbstractEvent<L>> E post(E event) {
+    public <L extends Listener, E extends AbstractEvent<L>> E post(final E event) {
+        return this.post(event, false);
+    }
+
+    public <L extends Listener, E extends AbstractEvent<L>> E post(final E event, final boolean forceSortPriorities) {
         try {
-            return postInternal(event);
+            return postInternal(event, forceSortPriorities);
         } catch (Throwable e) {
             this.errorHandler.accept(e);
             return event;
         }
     }
 
+    public <L extends Listener, E extends AbstractEvent<L>> E postInternal(final E event) {
+        return this.postInternal(event, false);
+    }
+
     @SuppressWarnings("unchecked")
-    public <L extends Listener, E extends AbstractEvent<L>> E postInternal(E event) {
+    public <L extends Listener, E extends AbstractEvent<L>> E postInternal(final E event, final boolean forceSortPriorities) {
         if (event.isAbort()) return event;
 
         final Map<Object, Subscription<?>> subscriptions = this.subscriptions.get(event.getListenerType());
         if (subscriptions == null || subscriptions.isEmpty()) return event;
 
         final List<Subscription<?>> subscriptionList = new ArrayList<>(subscriptions.values());
-        sortCallback.accept(subscriptionList, this.priorityOrder);
+        if (forceSortPriorities) {
+            sortCallback.accept(subscriptionList, this.priorityOrder);
+        }
 
         for (Subscription<?> subscription : subscriptionList) {
             event.getEventExecutor().execute((L) subscription.getListenerType());

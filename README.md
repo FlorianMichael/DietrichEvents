@@ -78,7 +78,6 @@ public interface ExampleListener extends Listener {
 ### Register listener
 ```java
 public class ExampleListenerUsage implements ExampleListener {
-
     public void registerListeners() {
         DietrichEvents.global().subscribe(ExampleListener.class, this);
     }
@@ -87,6 +86,23 @@ public class ExampleListenerUsage implements ExampleListener {
         DietrichEvents.global().unsubscribe(ExampleListener.class, this);
     }
     
+    @Override
+    public void onPreExample() {
+    }
+
+    @Override
+    public void onExample(EventStateType eventStateType) {
+    }
+}
+```
+
+### v1.2.0 API
+```java
+public class ExampleListenerUsage implements ExampleListener {
+    public void init() {
+        DietrichEvents.global().subscribeClass(this);
+    }
+
     @Override
     public void onPreExample() {
     }
