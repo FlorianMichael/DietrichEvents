@@ -75,66 +75,6 @@ public class DietrichEvents {
         return new DietrichEvents(subscriptions, mappingFunction);
     }
 
-    public void subscribeClassUnsafe(final Object listener) {
-        if (!Listener.class.isAssignableFrom(listener.getClass())) return;
-
-        subscribeClassInternal(new Subscription<>((Listener) listener));
-    }
-
-    public void subscribeClassUnsafe(final Object listener, final int priority) {
-        if (!Listener.class.isAssignableFrom(listener.getClass())) return;
-
-        subscribeClassInternal(new Subscription<>((Listener) listener, priority));
-    }
-
-    public void subscribeClassUnsafe(final Object listener, final IntSupplier priority) {
-        if (!Listener.class.isAssignableFrom(listener.getClass())) return;
-
-        subscribeClassInternal(new Subscription<>((Listener) listener, priority));
-    }
-
-    public void subscribeClass(final Listener listener) {
-        subscribeClassInternal(new Subscription<>(listener));
-    }
-
-    public void subscribeClass(final Listener listener, final int priority) {
-        subscribeClassInternal(new Subscription<>(listener, priority));
-    }
-
-    public void subscribeClass(final Listener listener, final IntSupplier priority) {
-        subscribeClassInternal(new Subscription<>(listener, priority));
-    }
-
-    @SuppressWarnings("unchecked")
-    public <L extends Listener> void subscribeClassInternal(final Subscription<L> subscription) {
-        for (Class<?> classInterface : subscription.getListenerType().getClass().getInterfaces()) {
-            if (Listener.class.isAssignableFrom(classInterface)) {
-                this.subscribeInternal((Class<L>) classInterface, subscription);
-            }
-        }
-    }
-
-    public <L extends Listener> void unsubscribeAll(final Object listener) {
-        if (!Listener.class.isAssignableFrom(listener.getClass())) return;
-
-        unsubscribeAll(listener);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <L extends Listener> void unsubscribeAll(final L listener) {
-        try {
-            for (Map.Entry<Class<?>, Map<Object, Subscription<?>>> entry : this.subscriptions.entrySet()) {
-                for (Subscription<?> subscription : entry.getValue().values()) {
-                    if (subscription.getListenerType() == listener) {
-                        this.unsubscribe((Class<L>) entry.getKey(), (L) subscription.getListenerType());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            this.errorHandler.accept(e);
-        }
-    }
-
     public <L extends Listener> void subscribe(Class<L> listenerType, L listener) {
         subscribeInternal(listenerType, new Subscription<>(listener));
     }
@@ -154,11 +94,71 @@ public class DietrichEvents {
         this.subscriptions.put(listenerType, subscriptionMap.entrySet().stream().sorted(Map.Entry.comparingByValue(this.priorityOrder)).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> oldValue, ConcurrentHashMap::new)));
     }
 
+    public void subscribeClass(final Listener listener) {
+        subscribeClassInternal(new Subscription<>(listener));
+    }
+
+    public void subscribeClass(final Listener listener, final int priority) {
+        subscribeClassInternal(new Subscription<>(listener, priority));
+    }
+
+    public void subscribeClass(final Listener listener, final IntSupplier priority) {
+        subscribeClassInternal(new Subscription<>(listener, priority));
+    }
+
+    public void subscribeClassUnsafe(final Object listener) {
+        if (!Listener.class.isAssignableFrom(listener.getClass())) return;
+
+        subscribeClassInternal(new Subscription<>((Listener) listener));
+    }
+
+    public void subscribeClassUnsafe(final Object listener, final int priority) {
+        if (!Listener.class.isAssignableFrom(listener.getClass())) return;
+
+        subscribeClassInternal(new Subscription<>((Listener) listener, priority));
+    }
+
+    public void subscribeClassUnsafe(final Object listener, final IntSupplier priority) {
+        if (!Listener.class.isAssignableFrom(listener.getClass())) return;
+
+        subscribeClassInternal(new Subscription<>((Listener) listener, priority));
+    }
+
+    @SuppressWarnings("unchecked")
+    public <L extends Listener> void subscribeClassInternal(final Subscription<L> subscription) {
+        for (Class<?> classInterface : subscription.getListenerType().getClass().getInterfaces()) {
+            if (Listener.class.isAssignableFrom(classInterface)) {
+                this.subscribeInternal((Class<L>) classInterface, subscription);
+            }
+        }
+    }
+
     public <L extends Listener> void unsubscribe(Class<L> listenerType, L listener) {
         try {
             this.subscriptions.get(listenerType).remove(listener);
             if (this.subscriptions.get(listenerType).isEmpty()) {
                 this.subscriptions.remove(listenerType);
+            }
+        } catch (Exception e) {
+            this.errorHandler.accept(e);
+        }
+    }
+
+    public void unsubscribeClass(final Object listener) {
+        if (!Listener.class.isAssignableFrom(listener.getClass())) return;
+
+        unsubscribeClass(listener);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <L extends Listener> void unsubscribeClass(final L listener) {
+        try {
+            for (Map.Entry<Class<?>, Map<Object, Subscription<?>>> entry : this.subscriptions.entrySet()) {
+                for (Subscription<?> subscription : entry.getValue().values()) {
+                    if (subscription.getListenerType() == listener) {
+                        this.unsubscribe((Class<L>) entry.getKey(), (L) subscription.getListenerType());
+                    }
+                }
             }
         } catch (Exception e) {
             this.errorHandler.accept(e);
