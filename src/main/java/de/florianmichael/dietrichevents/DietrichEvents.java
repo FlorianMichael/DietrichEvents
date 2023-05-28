@@ -212,6 +212,8 @@ public class DietrichEvents {
 
     @SuppressWarnings("unchecked")
     public <L extends Listener, E extends AbstractEvent<L>> E postInternal(final E event) {
+        if (!this.subscriptions.containsKey(event.getListenerType())) return event;
+
         for (Caller caller : this.subscriptions.get(event.getListenerType())) {
             event.getEventExecutor().execute((L) caller.getSubscription().getListenerType());
 
