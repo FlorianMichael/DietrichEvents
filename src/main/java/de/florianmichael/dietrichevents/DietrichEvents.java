@@ -169,6 +169,16 @@ public class DietrichEvents {
         }
     }
 
+    public <L extends Listener> boolean hasSubscribers(final Class<L> listenerType) {
+        return this.subscriptions.containsKey(listenerType);
+    }
+
+    public <L extends Listener> boolean hasListeners(final Class<L> listenerType, final L listener) {
+        if (!hasSubscribers(listenerType)) return false;
+
+        return this.subscriptions.get(listenerType).containsKey(listener);
+    }
+
     public <L extends Listener, E extends AbstractEvent<L>> E post(final E event) {
         return this.post(event, false);
     }
