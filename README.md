@@ -114,7 +114,7 @@ public class ExampleListenerUsage implements ExampleListener {
 }
 ```
 
-## v1.3.5 API
+### v1.3.5 API
 ```java
 final var listener = DietrichEvents.global().subscribe(ABC.class, () -> System.out.println("A"));
                 
@@ -126,3 +126,10 @@ DietrichEvents.global().unsubscribeInternal(ABC.class, listener);
 // You can use either the post or the postInternal function, where postInternal has no error handling.
 DietrichEvents.global().post(new ExampleListener.ExampleEvent(EventStateType.PRE));
 ```
+
+## JMH Benchmark
+The Benchmark shows the average time it takes to call an event 100.000 times.
+
+| Benchmark                             | Mode | Cnt | Score      | Error      | Units |
+|---------------------------------------|------|-----|------------|------------|-------|
+| BenchmarkCaller.callBenchmarkListener | avgt | 4   | 716681.647 | 145474,182 | ns/op |
