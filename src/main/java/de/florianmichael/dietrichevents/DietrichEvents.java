@@ -23,7 +23,6 @@ import de.florianmichael.dietrichevents.handle.Subscription;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.*;
-import java.util.stream.Collectors;
 
 public class DietrichEvents {
     private final static DietrichEvents GLOBAL = createThreadSafe();
@@ -34,6 +33,8 @@ public class DietrichEvents {
 
     private final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions;
     private final Supplier<Map<Object, Subscription<?>>> mappingFunction;
+
+    private int cachedSubscriptionsSize;
 
     private Comparator<Subscription<?>> priorityOrder = Comparator.comparingInt(subscription -> {
         final int priority = subscription.getPrioritySupplier().getAsInt();
@@ -88,10 +89,7 @@ public class DietrichEvents {
     }
 
     public <L extends Listener> void subscribeInternal(Class<L> listenerType, Subscription<L> subscription) {
-        final Map<Object, Subscription<?>> subscriptionMap = this.subscriptions.computeIfAbsent(listenerType, value -> this.mappingFunction.get());
-        subscriptionMap.put(subscription.getListenerType(), subscription);
-
-        this.subscriptions.put(listenerType, subscriptionMap.entrySet().stream().sorted(Map.Entry.comparingByValue(this.priorityOrder)).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> oldValue, ConcurrentHashMap::new)));
+        this.subscriptions.computeIfAbsent(listenerType, c -> this.mappingFunction.get()).put(subscription.getListenerType(), subscription);
     }
 
     public void subscribeClass(final Listener listener) {
@@ -190,8 +188,9 @@ public class DietrichEvents {
         if (subscriptions == null || subscriptions.isEmpty()) return event;
 
         final List<Subscription<?>> subscriptionList = new ArrayList<>(subscriptions.values());
-        if (forceSortPriorities) {
+        if (forceSortPriorities || this.cachedSubscriptionsSize != this.subscriptions.size()) {
             sortCallback.accept(subscriptionList, this.priorityOrder);
+            this.cachedSubscriptionsSize = this.subscriptions.size();
         }
 
         for (Subscription<?> subscription : subscriptionList) {
