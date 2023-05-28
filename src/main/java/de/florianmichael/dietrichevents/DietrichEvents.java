@@ -22,6 +22,7 @@ import de.florianmichael.dietrichevents.handle.Subscription;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.*;
 
 public class DietrichEvents {
@@ -31,10 +32,9 @@ public class DietrichEvents {
         return GLOBAL;
     }
 
+    private final AtomicInteger subscriptionsSize = new AtomicInteger();
     private final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions;
     private final Supplier<Map<Object, Subscription<?>>> mappingFunction;
-
-    private int cachedSubscriptionsSize;
 
     private Comparator<Subscription<?>> priorityOrder = Comparator.comparingInt(subscription -> {
         final int priority = subscription.getPrioritySupplier().getAsInt();
@@ -188,9 +188,8 @@ public class DietrichEvents {
         if (subscriptions == null || subscriptions.isEmpty()) return event;
 
         final List<Subscription<?>> subscriptionList = new ArrayList<>(subscriptions.values());
-        if (forceSortPriorities || this.cachedSubscriptionsSize != this.subscriptions.size()) {
+        if (forceSortPriorities || subscriptionsSize.getAndSet(this.subscriptions.size()) != this.subscriptions.size()) {
             sortCallback.accept(subscriptionList, this.priorityOrder);
-            this.cachedSubscriptionsSize = this.subscriptions.size();
         }
 
         for (Subscription<?> subscription : subscriptionList) {
