@@ -17,12 +17,13 @@
  */
 package de.florianmichael.dietrichevents;
 
+import de.florianmichael.dietrichevents.handle.Caller;
 import de.florianmichael.dietrichevents.handle.Listener;
 import de.florianmichael.dietrichevents.handle.Subscription;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.*;
 
 public class DietrichEvents {
@@ -32,18 +33,17 @@ public class DietrichEvents {
         return GLOBAL;
     }
 
-    private final AtomicInteger subscriptionsSize = new AtomicInteger();
-    private final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions;
-    private final Supplier<Map<Object, Subscription<?>>> mappingFunction;
+    private final Map<Class<?>, List<Caller>> subscriptions;
+    private final Supplier<List<Caller>> mappingFunction;
 
-    private Comparator<Subscription<?>> priorityOrder = Comparator.comparingInt(subscription -> {
-        final int priority = subscription.getPrioritySupplier().getAsInt();
+    private Comparator<Caller> priorityOrder = Comparator.comparingInt(caller -> {
+        final int priority = caller.getSubscription().getPrioritySupplier().getAsInt();
         if (priority == Integer.MIN_VALUE) return Integer.MAX_VALUE;
         if (priority == Integer.MAX_VALUE) return Integer.MIN_VALUE;
         return -priority;
     });
 
-    public void setPriorityOrder(Comparator<Subscription<?>> priorityOrder) {
+    public void setPriorityOrder(Comparator<Caller> priorityOrder) {
         this.priorityOrder = priorityOrder;
     }
 
@@ -53,26 +53,26 @@ public class DietrichEvents {
         this.errorHandler = errorHandler;
     }
 
-    private BiConsumer<List<Subscription<?>>, Comparator<Subscription<?>>> sortCallback = List::sort;
+    private BiConsumer<List<Caller>, Comparator<Caller>> sortCallback = List::sort;
 
-    public void setSortCallback(BiConsumer<List<Subscription<?>>, Comparator<Subscription<?>>> sortCallback) {
+    public void setSortCallback(BiConsumer<List<Caller>, Comparator<Caller>> sortCallback) {
         this.sortCallback = sortCallback;
     }
 
-    public DietrichEvents(final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions, final Supplier<Map<Object, Subscription<?>>> mappingFunction) {
+    public DietrichEvents(final Map<Class<?>, List<Caller>> subscriptions, final Supplier<List<Caller>> mappingFunction) {
         this.subscriptions = subscriptions;
         this.mappingFunction = mappingFunction;
     }
 
     public static DietrichEvents createThreadSafe() {
-        return create(new ConcurrentHashMap<>(), ConcurrentHashMap::new);
+        return create(new ConcurrentHashMap<>(), CopyOnWriteArrayList::new);
     }
 
     public static DietrichEvents createDefault() {
-        return create(new ConcurrentHashMap<>(), HashMap::new);
+        return create(new ConcurrentHashMap<>(), ArrayList::new);
     }
 
-    public static DietrichEvents create(final Map<Class<?>, Map<Object, Subscription<?>>> subscriptions, final Supplier< Map<Object, Subscription<?>>> mappingFunction) {
+    public static DietrichEvents create(final Map<Class<?>, List<Caller>> subscriptions, final Supplier<List<Caller>> mappingFunction) {
         return new DietrichEvents(subscriptions, mappingFunction);
     }
 
@@ -89,7 +89,11 @@ public class DietrichEvents {
     }
 
     public <L extends Listener> L subscribeInternal(Class<L> listenerType, Subscription<L> subscription) {
-        this.subscriptions.computeIfAbsent(listenerType, c -> this.mappingFunction.get()).put(subscription.getListenerType(), subscription);
+        this.subscriptions.computeIfAbsent(listenerType, c -> this.mappingFunction.get()).add(new Caller(subscription.getListenerType(), subscription));
+        final List<Caller> sortedCallers = this.subscriptions.get(listenerType);
+        this.sortCallback.accept(sortedCallers, this.priorityOrder);
+        this.subscriptions.put(listenerType, sortedCallers);
+
         return subscription.getListenerType();
     }
 
@@ -135,8 +139,10 @@ public class DietrichEvents {
     @SuppressWarnings("unchecked")
     public <L extends Listener> void unsubscribeClass(final L listener) {
         try {
-            for (Map.Entry<Class<?>, Map<Object, Subscription<?>>> entry : this.subscriptions.entrySet()) {
-                for (Subscription<?> subscription : entry.getValue().values()) {
+            for (Map.Entry<Class<?>, List<Caller>> entry : this.subscriptions.entrySet()) {
+                for (Caller caller : entry.getValue()) {
+                    final Subscription<?> subscription = caller.getSubscription();
+
                     if (subscription.getListenerType() == listener) {
                         this.unsubscribeInternal((Class<L>) entry.getKey(), (L) subscription.getListenerType());
                     }
@@ -176,40 +182,38 @@ public class DietrichEvents {
     public <L extends Listener> boolean hasListeners(final Class<L> listenerType, final L listener) {
         if (!hasSubscribers(listenerType)) return false;
 
-        return this.subscriptions.get(listenerType).containsKey(listener);
+        return this.subscriptions.get(listenerType).stream().anyMatch(caller -> caller.getListener() == listener);
+    }
+
+    public <L extends Listener, E extends AbstractEvent<L>> E postPush(final E event) {
+        final List<Caller> sortedCallers = this.subscriptions.get(event.getListenerType());
+        this.sortCallback.accept(sortedCallers, this.priorityOrder);
+        this.subscriptions.put(event.getListenerType(), sortedCallers);
+
+        return post(event);
     }
 
     public <L extends Listener, E extends AbstractEvent<L>> E post(final E event) {
-        return this.post(event, false);
-    }
-
-    public <L extends Listener, E extends AbstractEvent<L>> E post(final E event, final boolean forceSortPriorities) {
         try {
-            return postInternal(event, forceSortPriorities);
+            return postInternal(event);
         } catch (Throwable e) {
             this.errorHandler.accept(e);
             return event;
         }
     }
 
-    public <L extends Listener, E extends AbstractEvent<L>> E postInternal(final E event) {
-        return this.postInternal(event, false);
+    public <L extends Listener, E extends AbstractEvent<L>> E postInternalPush(final E event) {
+        final List<Caller> sortedCallers = this.subscriptions.get(event.getListenerType());
+        this.sortCallback.accept(sortedCallers, this.priorityOrder);
+        this.subscriptions.put(event.getListenerType(), sortedCallers);
+
+        return postInternal(event);
     }
 
     @SuppressWarnings("unchecked")
-    public <L extends Listener, E extends AbstractEvent<L>> E postInternal(final E event, final boolean forceSortPriorities) {
-        if (event.isAbort()) return event;
-
-        final Map<Object, Subscription<?>> subscriptions = this.subscriptions.get(event.getListenerType());
-        if (subscriptions == null || subscriptions.isEmpty()) return event;
-
-        final List<Subscription<?>> subscriptionList = new ArrayList<>(subscriptions.values());
-        if (forceSortPriorities || subscriptionsSize.getAndSet(this.subscriptions.size()) != this.subscriptions.size()) {
-            sortCallback.accept(subscriptionList, this.priorityOrder);
-        }
-
-        for (Subscription<?> subscription : subscriptionList) {
-            event.getEventExecutor().execute((L) subscription.getListenerType());
+    public <L extends Listener, E extends AbstractEvent<L>> E postInternal(final E event) {
+        for (Caller caller : this.subscriptions.get(event.getListenerType())) {
+            event.getEventExecutor().execute((L) caller.getSubscription().getListenerType());
 
             if (event.isAbort()) return event;
         }
