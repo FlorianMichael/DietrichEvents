@@ -76,20 +76,21 @@ public class DietrichEvents {
         return new DietrichEvents(subscriptions, mappingFunction);
     }
 
-    public <L extends Listener> void subscribe(Class<L> listenerType, L listener) {
-        subscribeInternal(listenerType, new Subscription<>(listener));
+    public <L extends Listener> L subscribe(Class<L> listenerType, L listener) {
+        return subscribeInternal(listenerType, new Subscription<>(listener));
     }
 
-    public <L extends Listener> void subscribe(Class<L> listenerType, L listener, int priority) {
-        subscribeInternal(listenerType, new Subscription<>(listener, priority));
+    public <L extends Listener> L subscribe(Class<L> listenerType, L listener, int priority) {
+        return subscribeInternal(listenerType, new Subscription<>(listener, priority));
     }
 
-    public <L extends Listener> void subscribe(Class<L> listenerType, L listener, IntSupplier priority) {
-        subscribeInternal(listenerType, new Subscription<>(listener, priority));
+    public <L extends Listener> L subscribe(Class<L> listenerType, L listener, IntSupplier priority) {
+        return subscribeInternal(listenerType, new Subscription<>(listener, priority));
     }
 
-    public <L extends Listener> void subscribeInternal(Class<L> listenerType, Subscription<L> subscription) {
+    public <L extends Listener> L subscribeInternal(Class<L> listenerType, Subscription<L> subscription) {
         this.subscriptions.computeIfAbsent(listenerType, c -> this.mappingFunction.get()).put(subscription.getListenerType(), subscription);
+        return subscription.getListenerType();
     }
 
     public void subscribeClass(final Listener listener) {
@@ -131,16 +132,21 @@ public class DietrichEvents {
         }
     }
 
-    public <L extends Listener> void unsubscribe(Class<L> listenerType, L listener) {
+    @SuppressWarnings("unchecked")
+    public <L extends Listener> void unsubscribeClass(final L listener) {
         try {
-            this.subscriptions.get(listenerType).remove(listener);
-            if (this.subscriptions.get(listenerType).isEmpty()) {
-                this.subscriptions.remove(listenerType);
+            for (Map.Entry<Class<?>, Map<Object, Subscription<?>>> entry : this.subscriptions.entrySet()) {
+                for (Subscription<?> subscription : entry.getValue().values()) {
+                    if (subscription.getListenerType() == listener) {
+                        this.unsubscribeInternal((Class<L>) entry.getKey(), (L) subscription.getListenerType());
+                    }
+                }
             }
         } catch (Exception e) {
             this.errorHandler.accept(e);
         }
     }
+
 
     public void unsubscribeClassUnsafe(final Object listener) {
         if (!Listener.class.isAssignableFrom(listener.getClass())) return;
@@ -148,15 +154,15 @@ public class DietrichEvents {
         unsubscribeClass((Listener) listener);
     }
 
-    @SuppressWarnings("unchecked")
-    public <L extends Listener> void unsubscribeClass(final L listener) {
+    public <L extends Listener> void unsubscribeListenerType(final Class<L> listenerType) {
+        this.subscriptions.remove(listenerType);
+    }
+
+    public <L extends Listener> void unsubscribeInternal(Class<L> listenerType, L listener) {
         try {
-            for (Map.Entry<Class<?>, Map<Object, Subscription<?>>> entry : this.subscriptions.entrySet()) {
-                for (Subscription<?> subscription : entry.getValue().values()) {
-                    if (subscription.getListenerType() == listener) {
-                        this.unsubscribe((Class<L>) entry.getKey(), (L) subscription.getListenerType());
-                    }
-                }
+            this.subscriptions.get(listenerType).remove(listener);
+            if (this.subscriptions.get(listenerType).isEmpty()) {
+                this.subscriptions.remove(listenerType);
             }
         } catch (Exception e) {
             this.errorHandler.accept(e);

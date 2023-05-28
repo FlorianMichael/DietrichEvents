@@ -18,7 +18,7 @@ repositories {
 }
 
 dependencies {
-    implementation "com.github.FlorianMichael:DietrichEvents:1.3.4"
+    implementation "com.github.FlorianMichael:DietrichEvents:1.3.5"
 }
 ```
 
@@ -111,6 +111,13 @@ public class ExampleListenerUsage implements ExampleListener {
     public void onExample(EventStateType eventStateType) {
     }
 }
+```
+
+## v1.3.5 API
+```java
+final var listener = DietrichEvents.global().subscribe(ABC.class, () -> System.out.println("A"));
+                
+DietrichEvents.global().unsubscribeInternal(ABC.class, listener);
 ```
 
 ### Calling an Event
