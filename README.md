@@ -101,6 +101,7 @@ public class ExampleListenerUsage implements ExampleListener {
 public class ExampleListenerUsage implements ExampleListener {
     public void init() {
         DietrichEvents.global().subscribeClass(this);
+        // subscribeClassUnsafe can be used if you only have a Object
     }
 
     @Override
