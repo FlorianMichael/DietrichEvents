@@ -166,7 +166,8 @@ public class DietrichEvents {
 
     public <L extends Listener> void unsubscribeInternal(Class<L> listenerType, L listener) {
         try {
-            this.subscriptions.get(listenerType).remove(listener);
+            this.subscriptions.get(listenerType).removeIf(caller -> caller.getListener() == listener);
+
             if (this.subscriptions.get(listenerType).isEmpty()) {
                 this.subscriptions.remove(listenerType);
             }
