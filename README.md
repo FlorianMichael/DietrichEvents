@@ -8,19 +8,12 @@ If you just want to talk or need help with DietrichEvents feel free to join my
 [Discord](https://discord.gg/BwWhCHUKDf).
 
 ## How to add this to your project
-Just copy this part to your *build.gradle*:
-```groovy
-repositories {
-    maven {
-        name = "Jitpack"
-        url = "https://jitpack.io"
-    }
-}
+### Gradle/Maven
+To use DietrichEvents with Gradle/Maven you can use this [Maven server](https://maven.lenni0451.net/#/releases/de/florianmichael/DietrichEvents) or [Jitpack](https://jitpack.io/#FlorianMichael/DietrichEvents).  
+You can also find instructions how to implement it into your build script there.
 
-dependencies {
-    implementation "com.github.FlorianMichael:DietrichEvents:1.3.7"
-}
-```
+### Jar File
+If you just want the latest jar file you can download it from the GitHub [Actions](https://github.com/FlorianMichael/DietrichEvents/actions) or use the [Release](https://github.com/FlorianMichael/DietrichEvents/releases).
 
 ## Example usage
 ### Create instance
@@ -78,6 +71,8 @@ public interface ExampleListener extends Listener {
 ### Register listener
 ```java
 public class ExampleListenerUsage implements ExampleListener {
+
+    // You can also use subscribeClass and subscribeClassInternal to subscribe all listeners from a specific class / object
     public void registerListeners() {
         DietrichEvents.global().subscribe(ExampleListener.class, this);
     }
@@ -96,31 +91,6 @@ public class ExampleListenerUsage implements ExampleListener {
 }
 ```
 
-### v1.2.0 API
-```java
-public class ExampleListenerUsage implements ExampleListener {
-    public void init() {
-        DietrichEvents.global().subscribeClass(this);
-        // subscribeClassUnsafe can be used if you only have a Object
-    }
-
-    @Override
-    public void onPreExample() {
-    }
-
-    @Override
-    public void onExample(EventStateType eventStateType) {
-    }
-}
-```
-
-### v1.3.5 API
-```java
-final var listener = DietrichEvents.global().subscribe(ABC.class, () -> System.out.println("A"));
-                
-DietrichEvents.global().unsubscribeInternal(ABC.class, listener);
-```
-
 ### Calling an Event
 ```java
 // You can use either the post or the postInternal function, where postInternal has no error handling.
@@ -133,3 +103,5 @@ The Benchmark shows the average time it takes to call an event 100.000 times.
 | Benchmark                             | Mode | Cnt | Score      | Error      | Units |
 |---------------------------------------|------|-----|------------|------------|-------|
 | BenchmarkCaller.callBenchmarkListener | avgt | 4   | 716681.647 | 145474,182 | ns/op |
+
+For a better comparison you can look [here](https://github.com/FlorianMichael/DietrichEvents2)
