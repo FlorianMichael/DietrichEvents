@@ -16,6 +16,9 @@
  */
 package de.florianmichael.dietrichevents.enums;
 
+/**
+ * This class is optional and does not have to be used
+ */
 public class Priorities {
     public final static int LOWEST = -2;
     public final static int LOW = -1;

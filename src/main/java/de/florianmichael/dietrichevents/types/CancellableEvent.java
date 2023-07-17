@@ -19,15 +19,26 @@ package de.florianmichael.dietrichevents.types;
 import de.florianmichael.dietrichevents.AbstractEvent;
 import de.florianmichael.dietrichevents.handle.Listener;
 
+/**
+ * This class represents a cancellable event. It is used to call the event on the listener.
+ * @param <L> The listener type
+ */
 public abstract class CancellableEvent<L extends Listener> extends AbstractEvent<L> {
 
     private boolean cancelled;
 
+    /**
+     * Recommended method to cancel the event
+     */
     public void cancel() {
-        this.cancelled = true;
+        this.setCancelled(true);
     }
 
     public boolean isCancelled() {
         return cancelled;
+    }
+
+    public void setCancelled(boolean cancelled) {
+        this.cancelled = cancelled;
     }
 }

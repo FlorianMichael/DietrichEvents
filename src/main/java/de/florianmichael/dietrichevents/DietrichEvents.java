@@ -35,6 +35,10 @@ public class DietrichEvents {
     private final Map<Class<?>, List<Caller>> subscriptions;
     private final Supplier<List<Caller>> mappingFunction;
 
+    /**
+     * The default priority order comparator, that is used to sort the {@link de.florianmichael.dietrichevents.handle.Caller} list.
+     * Higher priority means that the {@link de.florianmichael.dietrichevents.handle.Caller} is called earlier.
+     */
     private Comparator<Caller> priorityOrder = Comparator.comparingInt(caller -> {
         final int priority = caller.getSubscription().getPrioritySupplier().getAsInt();
         if (priority == Integer.MIN_VALUE) return Integer.MAX_VALUE;
@@ -42,18 +46,33 @@ public class DietrichEvents {
         return -priority;
     });
 
+    /**
+     * This priorityOrder is default used by the {@link de.florianmichael.dietrichevents.DietrichEvents#sortCallback} instance.
+     *
+     * @param priorityOrder A {@link java.util.Comparator} that is used to sort the {@link de.florianmichael.dietrichevents.handle.Caller} list.
+     */
     public void setPriorityOrder(Comparator<Caller> priorityOrder) {
         this.priorityOrder = priorityOrder;
     }
 
     private Consumer<Throwable> errorHandler = Throwable::printStackTrace;
 
+    /**
+     * API method to overwrite the default {@link de.florianmichael.dietrichevents.DietrichEvents#errorHandler} instance.
+     *
+     * @param errorHandler A callback that is called when an exception is thrown during the event call.
+     */
     public void setErrorHandler(Consumer<Throwable> errorHandler) {
         this.errorHandler = errorHandler;
     }
 
     private BiConsumer<List<Caller>, Comparator<Caller>> sortCallback = List::sort;
 
+    /**
+     * API method to overwrite the default {@link de.florianmichael.dietrichevents.DietrichEvents#sortCallback} instance.
+     *
+     * @param sortCallback A callback that is called when the list of {@link de.florianmichael.dietrichevents.handle.Caller} is sorted.
+     */
     public void setSortCallback(BiConsumer<List<Caller>, Comparator<Caller>> sortCallback) {
         this.sortCallback = sortCallback;
     }
@@ -63,30 +82,73 @@ public class DietrichEvents {
         this.mappingFunction = mappingFunction;
     }
 
+    /**
+     * @return A thread-safe instance of {@link de.florianmichael.dietrichevents.DietrichEvents}.
+     */
     public static DietrichEvents createThreadSafe() {
         return create(new ConcurrentHashMap<>(), CopyOnWriteArrayList::new);
     }
 
+    /**
+     * @return The default instance, which is not thread safe.
+     */
     public static DietrichEvents createDefault() {
         return create(new ConcurrentHashMap<>(), ArrayList::new);
     }
 
+    /**
+     * Creates a new {@link de.florianmichael.dietrichevents.DietrichEvents} instance.
+     *
+     * @param subscriptions The subscriptions
+     * @param mappingFunction The mapping function
+     * @return The new instance
+     */
     public static DietrichEvents create(final Map<Class<?>, List<Caller>> subscriptions, final Supplier<List<Caller>> mappingFunction) {
         return new DietrichEvents(subscriptions, mappingFunction);
     }
 
+    /**
+     * Calls the given event.
+     *
+     * @param listenerType The listener type
+     * @param listener The listener
+     * @return The listener
+     */
     public <L extends Listener> L subscribe(Class<L> listenerType, L listener) {
         return subscribeInternal(listenerType, new Subscription<>(listener));
     }
 
+    /**
+     * Subscribes the given listener to the given listener type and calls the {@link de.florianmichael.dietrichevents.DietrichEvents#sortCallback}.
+     *
+     * @param listenerType The listener type
+     * @param listener The listener
+     * @param priority The priority
+     * @return The listener
+     */
     public <L extends Listener> L subscribe(Class<L> listenerType, L listener, int priority) {
         return subscribeInternal(listenerType, new Subscription<>(listener, priority));
     }
 
+    /**
+     * Subscribes the given listener to the given listener type and calls the {@link de.florianmichael.dietrichevents.DietrichEvents#sortCallback}.
+     *
+     * @param listenerType The listener type
+     * @param listener The listener
+     * @param priority The priority
+     * @return The listener
+     */
     public <L extends Listener> L subscribe(Class<L> listenerType, L listener, IntSupplier priority) {
         return subscribeInternal(listenerType, new Subscription<>(listener, priority));
     }
 
+    /**
+     * Subscribes the given listener to the given listener type and calls the {@link de.florianmichael.dietrichevents.DietrichEvents#sortCallback}.
+     *
+     * @param listenerType The listener type
+     * @param subscription The subscription
+     * @return The listener
+     */
     public <L extends Listener> L subscribeInternal(Class<L> listenerType, Subscription<L> subscription) {
         this.subscriptions.computeIfAbsent(listenerType, c -> this.mappingFunction.get()).add(new Caller(subscription.getListenerType(), subscription));
         final List<Caller> sortedCallers = this.subscriptions.get(listenerType);
@@ -96,36 +158,79 @@ public class DietrichEvents {
         return subscription.getListenerType();
     }
 
+    /**
+     * Subscribes all events from the given listener class.
+     *
+     * @param listener The listener to subscribe
+     */
     public void subscribeClass(final Listener listener) {
         subscribeClassInternal(new Subscription<>(listener));
     }
 
+    /**
+     * Subscribes all events from the given listener class.
+     *
+     * @param listener The listener to subscribe
+     * @param priority The priority of the listener
+     */
     public void subscribeClass(final Listener listener, final int priority) {
         subscribeClassInternal(new Subscription<>(listener, priority));
     }
 
+    /**
+     * Subscribes all events from the given listener class. <br>
+     * Note: The IntSupplier will only be called every post() if you are using the postPush() methods, otherwise
+     * it will be called every time a new listener is subscribed.
+     *
+     * @param listener The listener to subscribe
+     * @param priority The priority of the listener
+     */
     public void subscribeClass(final Listener listener, final IntSupplier priority) {
         subscribeClassInternal(new Subscription<>(listener, priority));
     }
 
+    /**
+     * Subscribes all listeners of the given type and automatically checks if the given listener object is
+     * implementing any listener, if that's not the case, the method will abort without any Exception.
+     *
+     * @param listener The listener to subscribe
+     */
     public void subscribeClassUnsafe(final Object listener) {
         if (!Listener.class.isAssignableFrom(listener.getClass())) return;
 
         subscribeClassInternal(new Subscription<>((Listener) listener));
     }
 
+    /**
+     * Subscribes all events from the given listener class.
+     * @param listener The listener to subscribe
+     * @param priority The priority of the listener
+     */
     public void subscribeClassUnsafe(final Object listener, final int priority) {
         if (!Listener.class.isAssignableFrom(listener.getClass())) return;
 
         subscribeClassInternal(new Subscription<>((Listener) listener, priority));
     }
 
+    /**
+     * Subscribes all events from the given listener class. <br>
+     * Note: The IntSupplier will only be called every post() if you are using the postPush() methods, otherwise
+     * it will be called every time a new listener is subscribed.
+     *
+     * @param listener The listener to subscribe
+     * @param priority The priority of the listener
+     */
     public void subscribeClassUnsafe(final Object listener, final IntSupplier priority) {
         if (!Listener.class.isAssignableFrom(listener.getClass())) return;
 
         subscribeClassInternal(new Subscription<>((Listener) listener, priority));
     }
 
+    /**
+     * Subscribes all events from the given Subscription field, this method is not intended to be used by the user.
+     *
+     * @param subscription The subscription to subscribe
+     */
     @SuppressWarnings("unchecked")
     public <L extends Listener> void subscribeClassInternal(final Subscription<L> subscription) {
         for (Class<?> classInterface : subscription.getListenerType().getClass().getInterfaces()) {
@@ -135,6 +240,11 @@ public class DietrichEvents {
         }
     }
 
+    /**
+     * Unsubscribes all events from the given listener class.
+     *
+     * @param listener The listener to unsubscribe
+     */
     @SuppressWarnings("unchecked")
     public <L extends Listener> void unsubscribeClass(final L listener) {
         try {
@@ -143,7 +253,7 @@ public class DietrichEvents {
                     final Subscription<?> subscription = caller.getSubscription();
 
                     if (subscription.getListenerType() == listener) {
-                        this.unsubscribeInternal((Class<L>) entry.getKey(), (L) subscription.getListenerType());
+                        this.unsubscribe((Class<L>) entry.getKey(), (L) subscription.getListenerType());
                     }
                 }
             }
@@ -152,18 +262,34 @@ public class DietrichEvents {
         }
     }
 
-
+    /**
+     * Unsubscribes all listeners of the given type and automatically checks if the given listener object is
+     * implementing any listener, if that's not the case, the method will abort without any Exception.
+     *
+     * @param listener The listener to unsubscribe
+     */
     public void unsubscribeClassUnsafe(final Object listener) {
         if (!Listener.class.isAssignableFrom(listener.getClass())) return;
 
         unsubscribeClass((Listener) listener);
     }
 
+    /**
+     * Unsubscribes all listeners of the given type
+     *
+     * @param listenerType The type of listener to unsubscribe
+     */
     public <L extends Listener> void unsubscribeListenerType(final Class<L> listenerType) {
         this.subscriptions.remove(listenerType);
     }
 
-    public <L extends Listener> void unsubscribeInternal(Class<L> listenerType, L listener) {
+    /**
+     * Unsubscribed the given listener type from the listener
+     *
+     * @param listenerType The type of listener to unsubscribe
+     * @param listener The listener to unsubscribe
+     */
+    public <L extends Listener> void unsubscribe(Class<L> listenerType, L listener) {
         try {
             this.subscriptions.get(listenerType).removeIf(caller -> caller.getListener() == listener);
 
@@ -175,16 +301,30 @@ public class DietrichEvents {
         }
     }
 
+    /**
+     * @param listenerType The type of listener to check
+     * @return Whether or not the event has subscribers
+     */
     public <L extends Listener> boolean hasSubscribers(final Class<L> listenerType) {
         return this.subscriptions.containsKey(listenerType);
     }
 
+    /**
+     * @param listenerType The type of listener to check
+     * @param listener The listener to check
+     * @return Whether or not the listener is subscribed to the event
+     */
     public <L extends Listener> boolean hasListeners(final Class<L> listenerType, final L listener) {
         if (!hasSubscribers(listenerType)) return false;
 
         return this.subscriptions.get(listenerType).stream().anyMatch(caller -> caller.getListener() == listener);
     }
 
+    /**
+     * Calls all listeners of a given event, has error handling and reorders the priorities each time it is called.
+     * @param event The event to post
+     * @return The event
+     */
     public <L extends Listener, E extends AbstractEvent<L>> E postPush(final E event) {
         final List<Caller> sortedCallers = this.subscriptions.get(event.getListenerType());
         this.sortCallback.accept(sortedCallers, this.priorityOrder);
@@ -193,6 +333,11 @@ public class DietrichEvents {
         return post(event);
     }
 
+    /**
+     * Calls all listeners of a given event, has error handling and does not reorder the priorities each time it is called.
+     * @param event The event to post
+     * @return The event
+     */
     public <L extends Listener, E extends AbstractEvent<L>> E post(final E event) {
         try {
             return postInternal(event);
@@ -202,6 +347,13 @@ public class DietrichEvents {
         }
     }
 
+    /**
+     * Calls all listeners of a given event, has no error handling and reorders the priorities each time it is called,
+     * this method should be used if the priority is an IntSupplier and is Dynamic.
+     *
+     * @param event The event to post
+     * @return The event
+     */
     public <L extends Listener, E extends AbstractEvent<L>> E postInternalPush(final E event) {
         final List<Caller> sortedCallers = this.subscriptions.get(event.getListenerType());
         this.sortCallback.accept(sortedCallers, this.priorityOrder);
@@ -210,12 +362,21 @@ public class DietrichEvents {
         return postInternal(event);
     }
 
+    /**
+     * Calls all listeners of a given event, but has no error handling and does not reorder the priorities.
+     * This method is the fastest of all post methods and also the recommended one if the priorities are not dynamic.
+     * As soon as an event is aborted, the call is cancelled and the event is returned.
+     *
+     * @param event The event to post
+     * @return The event
+     */
     @SuppressWarnings("unchecked")
     public <L extends Listener, E extends AbstractEvent<L>> E postInternal(final E event) {
-        if (!this.subscriptions.containsKey(event.getListenerType())) return event;
+        final List<Caller> callerList = this.subscriptions.get(event.getListenerType());
+        if (callerList == null) return event;
 
-        for (Caller caller : this.subscriptions.get(event.getListenerType())) {
-            event.getEventExecutor().execute((L) caller.getSubscription().getListenerType());
+        for (Caller caller : callerList) {
+            event.call((L) caller.getSubscription().getListenerType());
 
             if (event.isAbort()) return event;
         }

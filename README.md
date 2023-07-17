@@ -1,6 +1,8 @@
 # DietrichEvents
 A fast and feature rich but still easy to use Event library for Java
 
+#### Note: [DietrichEvents2](https://github.com/FlorianMichael/DietrichEvents2) is out! It is a lot faster, but offers less API, so this event system is a separate library and is still supported.
+
 ## Contact
 If you encounter any issues, please report them on the
 [issue tracker](https://github.com/FlorianMichael/DietrichEvents/issues).  
@@ -44,20 +46,18 @@ public interface ExampleListener extends Listener {
     void onExample(final EventStateType eventStateType);
     
     class ExampleEvent extends AbstractEvent<ExampleListener> {
-        private final EventExecutor<ExampleListener> eventExecutor;
+        private final EventStateType eventStateType;
         
         public ExampleEvent(final EventStateType eventStateType) {
-            this.eventExecutor = listener -> {
-                listener.onExample(eventStateType);
-                if (eventStateType == EventStateType.PRE) {
-                    listener.onPreExample();
-                }
-            };
+            this.eventStateType = eventStateType;
         }
         
         @Override
-        public EventExecutor<ExampleListener> getEventExecutor() {
-            return this.eventExecutor;
+        public void call(final ExampleListener listener) {
+            listener.onExample(eventStateType);
+            if (eventStateType == EventStateType.PRE) {
+                listener.onPreExample();
+            }
         }
 
         @Override
@@ -98,10 +98,4 @@ DietrichEvents.global().post(new ExampleListener.ExampleEvent(EventStateType.PRE
 ```
 
 ## JMH Benchmark
-The Benchmark shows the average time it takes to call an event 100.000 times.
-
-| Benchmark                             | Mode | Cnt | Score      | Error      | Units |
-|---------------------------------------|------|-----|------------|------------|-------|
-| BenchmarkCaller.callBenchmarkListener | avgt | 4   | 716681.647 | 145474,182 | ns/op |
-
-For a better comparison you can look [here](https://github.com/FlorianMichael/DietrichEvents2)
+For a comparison you can look [here](https://github.com/FlorianMichael/DietrichEvents2)

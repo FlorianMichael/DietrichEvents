@@ -16,6 +16,10 @@
  */
 package de.florianmichael.dietrichevents.handle;
 
+/**
+ * This class represents a caller. It is used to store the listener and the subscription.
+ * This class is used internally and should not be used by the user.
+ */
 public class Caller {
     private final Object listener;
     private final Subscription<?> subscription;

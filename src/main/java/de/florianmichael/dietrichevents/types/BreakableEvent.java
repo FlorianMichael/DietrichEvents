@@ -19,10 +19,18 @@ package de.florianmichael.dietrichevents.types;
 import de.florianmichael.dietrichevents.AbstractEvent;
 import de.florianmichael.dietrichevents.handle.Listener;
 
-public abstract class BreakableAbstractEvent<L extends Listener> extends AbstractEvent<L> {
+/**
+ * This class represents a breakable event. It is used to call the event on the listener.
+ *
+ * @param <L> The listener type
+ */
+public abstract class BreakableEvent<L extends Listener> extends AbstractEvent<L> {
 
     private boolean abort;
 
+    /**
+     * Recommended method to cancel the event
+     */
     public void stopHandling() {
         this.abort = true;
     }

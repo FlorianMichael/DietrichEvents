@@ -16,15 +16,29 @@
  */
 package de.florianmichael.dietrichevents;
 
-import de.florianmichael.dietrichevents.handle.EventExecutor;
 import de.florianmichael.dietrichevents.handle.Listener;
 
+/**
+ * This class represents a basic event. It is used to call the event on the listener.
+ *
+ * @param <L> The listener type
+ */
 public abstract class AbstractEvent<L extends Listener> {
 
+    /**
+     * @return true if the event should be aborted
+     */
     public boolean isAbort() {
         return false;
     }
 
-    public abstract EventExecutor<L> getEventExecutor();
+    /**
+     * @param listener The listener to call the event on, should be implemented by the user
+     */
+    public abstract void call(L listener);
+
+    /**
+     * @return The listener type
+     */
     public abstract Class<L> getListenerType();
 }

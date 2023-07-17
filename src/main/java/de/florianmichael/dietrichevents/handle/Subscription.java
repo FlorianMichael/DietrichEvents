@@ -18,6 +18,12 @@ package de.florianmichael.dietrichevents.handle;
 
 import java.util.function.IntSupplier;
 
+/**
+ * This class represents a subscription to an event. It is used to store the listener type and the priority.
+ * This class is used internally and should not be used by the user.
+ *
+ * @param <L> The listener type
+ */
 public class Subscription<L> {
     private final L listenerType;
     private final IntSupplier prioritySupplier;
