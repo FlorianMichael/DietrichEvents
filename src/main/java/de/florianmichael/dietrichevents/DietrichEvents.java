@@ -16,7 +16,6 @@
  */
 package de.florianmichael.dietrichevents;
 
-import de.florianmichael.dietrichevents.handle.Caller;
 import de.florianmichael.dietrichevents.handle.Listener;
 import de.florianmichael.dietrichevents.handle.Subscription;
 
@@ -32,15 +31,15 @@ public class DietrichEvents {
         return GLOBAL;
     }
 
-    private final Map<Class<?>, List<Caller>> subscriptions;
-    private final Supplier<List<Caller>> mappingFunction;
+    private final Map<Class<?>, List<Subscription<?>>> subscriptions;
+    private final Supplier<List<Subscription<?>>> mappingFunction;
 
     /**
-     * The default priority order comparator, that is used to sort the {@link de.florianmichael.dietrichevents.handle.Caller} list.
-     * Higher priority means that the {@link de.florianmichael.dietrichevents.handle.Caller} is called earlier.
+     * The default priority order comparator, that is used to sort the {@link de.florianmichael.dietrichevents.handle.Subscription} list.
+     * Higher priority means that the {@link de.florianmichael.dietrichevents.handle.Subscription} is called earlier.
      */
-    private Comparator<Caller> priorityOrder = Comparator.comparingInt(caller -> {
-        final int priority = caller.getSubscription().getPrioritySupplier().getAsInt();
+    private Comparator<Subscription<?>> priorityOrder = Comparator.comparingInt(subscription -> {
+        final int priority = subscription.getPrioritySupplier().getAsInt();
         if (priority == Integer.MIN_VALUE) return Integer.MAX_VALUE;
         if (priority == Integer.MAX_VALUE) return Integer.MIN_VALUE;
         return -priority;
@@ -49,9 +48,9 @@ public class DietrichEvents {
     /**
      * This priorityOrder is default used by the {@link de.florianmichael.dietrichevents.DietrichEvents#sortCallback} instance.
      *
-     * @param priorityOrder A {@link java.util.Comparator} that is used to sort the {@link de.florianmichael.dietrichevents.handle.Caller} list.
+     * @param priorityOrder A {@link java.util.Comparator} that is used to sort the {@link de.florianmichael.dietrichevents.handle.Subscription} list.
      */
-    public void setPriorityOrder(Comparator<Caller> priorityOrder) {
+    public void setPriorityOrder(Comparator<Subscription<?>> priorityOrder) {
         this.priorityOrder = priorityOrder;
     }
 
@@ -66,18 +65,18 @@ public class DietrichEvents {
         this.errorHandler = errorHandler;
     }
 
-    private BiConsumer<List<Caller>, Comparator<Caller>> sortCallback = List::sort;
+    private BiConsumer<List<Subscription<?>>, Comparator<Subscription<?>>> sortCallback = List::sort;
 
     /**
      * API method to overwrite the default {@link de.florianmichael.dietrichevents.DietrichEvents#sortCallback} instance.
      *
-     * @param sortCallback A callback that is called when the list of {@link de.florianmichael.dietrichevents.handle.Caller} is sorted.
+     * @param sortCallback A callback that is called when the list of {@link de.florianmichael.dietrichevents.handle.Subscription} is sorted.
      */
-    public void setSortCallback(BiConsumer<List<Caller>, Comparator<Caller>> sortCallback) {
+    public void setSortCallback(BiConsumer<List<Subscription<?>>, Comparator<Subscription<?>>> sortCallback) {
         this.sortCallback = sortCallback;
     }
 
-    public DietrichEvents(final Map<Class<?>, List<Caller>> subscriptions, final Supplier<List<Caller>> mappingFunction) {
+    public DietrichEvents(final Map<Class<?>, List<Subscription<?>>> subscriptions, final Supplier<List<Subscription<?>>> mappingFunction) {
         this.subscriptions = subscriptions;
         this.mappingFunction = mappingFunction;
     }
@@ -103,7 +102,7 @@ public class DietrichEvents {
      * @param mappingFunction The mapping function
      * @return The new instance
      */
-    public static DietrichEvents create(final Map<Class<?>, List<Caller>> subscriptions, final Supplier<List<Caller>> mappingFunction) {
+    public static DietrichEvents create(final Map<Class<?>, List<Subscription<?>>> subscriptions, final Supplier<List<Subscription<?>>> mappingFunction) {
         return new DietrichEvents(subscriptions, mappingFunction);
     }
 
@@ -150,8 +149,8 @@ public class DietrichEvents {
      * @return The listener
      */
     public <L extends Listener> L subscribeInternal(Class<L> listenerType, Subscription<L> subscription) {
-        this.subscriptions.computeIfAbsent(listenerType, c -> this.mappingFunction.get()).add(new Caller(subscription.getListenerType(), subscription));
-        final List<Caller> sortedCallers = this.subscriptions.get(listenerType);
+        this.subscriptions.computeIfAbsent(listenerType, c -> this.mappingFunction.get()).add(subscription);
+        final List<Subscription<?>> sortedCallers = this.subscriptions.get(listenerType);
         this.sortCallback.accept(sortedCallers, this.priorityOrder);
         this.subscriptions.put(listenerType, sortedCallers);
 
@@ -248,10 +247,8 @@ public class DietrichEvents {
     @SuppressWarnings("unchecked")
     public <L extends Listener> void unsubscribeClass(final L listener) {
         try {
-            for (Map.Entry<Class<?>, List<Caller>> entry : this.subscriptions.entrySet()) {
-                for (Caller caller : entry.getValue()) {
-                    final Subscription<?> subscription = caller.getSubscription();
-
+            for (Map.Entry<Class<?>, List<Subscription<?>>> entry : this.subscriptions.entrySet()) {
+                for (Subscription<?> subscription : entry.getValue()) {
                     if (subscription.getListenerType() == listener) {
                         this.unsubscribe((Class<L>) entry.getKey(), (L) subscription.getListenerType());
                     }
@@ -291,7 +288,7 @@ public class DietrichEvents {
      */
     public <L extends Listener> void unsubscribe(Class<L> listenerType, L listener) {
         try {
-            this.subscriptions.get(listenerType).removeIf(caller -> caller.getListener() == listener);
+            this.subscriptions.get(listenerType).removeIf(subscription -> subscription.getListenerType() == listener);
 
             if (this.subscriptions.get(listenerType).isEmpty()) {
                 this.subscriptions.remove(listenerType);
@@ -317,7 +314,7 @@ public class DietrichEvents {
     public <L extends Listener> boolean hasListeners(final Class<L> listenerType, final L listener) {
         if (!hasSubscribers(listenerType)) return false;
 
-        return this.subscriptions.get(listenerType).stream().anyMatch(caller -> caller.getListener() == listener);
+        return this.subscriptions.get(listenerType).stream().anyMatch(subscription -> subscription.getListenerType() == listener);
     }
 
     /**
@@ -326,7 +323,7 @@ public class DietrichEvents {
      * @return The event
      */
     public <L extends Listener, E extends AbstractEvent<L>> E postPush(final E event) {
-        final List<Caller> sortedCallers = this.subscriptions.get(event.getListenerType());
+        final List<Subscription<?>> sortedCallers = this.subscriptions.get(event.getListenerType());
         this.sortCallback.accept(sortedCallers, this.priorityOrder);
         this.subscriptions.put(event.getListenerType(), sortedCallers);
 
@@ -355,7 +352,7 @@ public class DietrichEvents {
      * @return The event
      */
     public <L extends Listener, E extends AbstractEvent<L>> E postInternalPush(final E event) {
-        final List<Caller> sortedCallers = this.subscriptions.get(event.getListenerType());
+        final List<Subscription<?>> sortedCallers = this.subscriptions.get(event.getListenerType());
         this.sortCallback.accept(sortedCallers, this.priorityOrder);
         this.subscriptions.put(event.getListenerType(), sortedCallers);
 
@@ -372,13 +369,11 @@ public class DietrichEvents {
      */
     @SuppressWarnings("unchecked")
     public <L extends Listener, E extends AbstractEvent<L>> E postInternal(final E event) {
-        final List<Caller> callerList = this.subscriptions.get(event.getListenerType());
-        if (callerList == null) return event;
+        final List<Subscription<?>> subscriptionList = this.subscriptions.get(event.getListenerType());
+        if (event.isAbort() || subscriptionList == null) return event;
 
-        for (Caller caller : callerList) {
-            event.call((L) caller.getSubscription().getListenerType());
-
-            if (event.isAbort()) return event;
+        for (Subscription<?> subscription : subscriptionList) {
+            event.call((L) subscription.getListenerType());
         }
         return event;
     }
