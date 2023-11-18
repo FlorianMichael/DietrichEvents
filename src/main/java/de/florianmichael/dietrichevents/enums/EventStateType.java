@@ -21,5 +21,5 @@ package de.florianmichael.dietrichevents.enums;
  */
 public enum EventStateType {
 
-    PRE_PRE, PRE, POST, POST_POST
+    PRE_PRE, PRE, INTRA, POST, POST_POST
 }
