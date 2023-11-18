@@ -1,7 +1,7 @@
 # DietrichEvents
 A fast and feature rich but still easy to use Event library for Java
 
-#### Note: [DietrichEvents2](https://github.com/FlorianMichael/DietrichEvents2) is out! It is a lot faster, but offers less API, so this event system is a separate library and is still supported.
+#### Note: [DietrichEvents2](https://github.com/FlorianMichael/DietrichEvents2) is out! It's the recommended version to use, as it's faster and has more features.
 
 ## Contact
 If you encounter any issues, please report them on the
@@ -11,7 +11,7 @@ If you just want to talk or need help with DietrichEvents feel free to join my
 
 ## How to add this to your project
 ### Gradle/Maven
-To use DietrichEvents with Gradle/Maven you can use this [Maven server](https://maven.lenni0451.net/#/releases/de/florianmichael/DietrichEvents) or [Jitpack](https://jitpack.io/#FlorianMichael/DietrichEvents).  
+To use DietrichEvents with Gradle/Maven you can use [Lenni0451's repository](https://maven.lenni0451.net/#/releases/de/florianmichael/DietrichEvents) or [Jitpack](https://jitpack.io/#FlorianMichael/DietrichEvents).  
 You can also find instructions how to implement it into your build script there.
 
 ### Jar File
