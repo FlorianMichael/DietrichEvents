@@ -300,7 +300,7 @@ public class DietrichEvents {
 
     /**
      * @param listenerType The type of listener to check
-     * @return Whether or not the event has subscribers
+     * @return Whether the event has subscribers
      */
     public <L extends Listener> boolean hasSubscribers(final Class<L> listenerType) {
         return this.subscriptions.containsKey(listenerType);
@@ -309,7 +309,7 @@ public class DietrichEvents {
     /**
      * @param listenerType The type of listener to check
      * @param listener The listener to check
-     * @return Whether or not the listener is subscribed to the event
+     * @return Whether the listener is subscribed to the event
      */
     public <L extends Listener> boolean hasListeners(final Class<L> listenerType, final L listener) {
         if (!hasSubscribers(listenerType)) return false;
