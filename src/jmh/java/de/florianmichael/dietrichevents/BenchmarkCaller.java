@@ -27,7 +27,8 @@ import java.util.concurrent.TimeUnit;
 @Warmup(iterations = 4, time = 5)
 @Measurement(iterations = 4, time = 5)
 public class BenchmarkCaller {
-    private final static int ITERATIONS = 100_000;
+
+    private static final int ITERATIONS = 100_000;
 
     @Setup
     public void setup() {
@@ -43,4 +44,5 @@ public class BenchmarkCaller {
             DietrichEvents.global().postInternal(new BenchmarkListener.BenchmarkEvent(blackhole));
         }
     }
+
 }

@@ -23,4 +23,5 @@ import java.util.EventListener;
  * This class represents a listener. It is used to mark a class as a listener.
  */
 public interface Listener extends EventListener {
+
 }

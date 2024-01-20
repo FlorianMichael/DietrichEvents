@@ -26,6 +26,7 @@ import java.util.function.IntSupplier;
  * @param <L> The listener type
  */
 public class Subscription<L> {
+
     private final L listenerType;
     private final IntSupplier prioritySupplier;
 
@@ -49,4 +50,5 @@ public class Subscription<L> {
     public IntSupplier getPrioritySupplier() {
         return prioritySupplier;
     }
+
 }

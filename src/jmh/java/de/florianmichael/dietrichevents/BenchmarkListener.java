@@ -25,6 +25,7 @@ public interface BenchmarkListener extends Listener {
     void onBenchmark(final Blackhole blackhole);
 
     class BenchmarkEvent extends AbstractEvent<BenchmarkListener> {
+
         private final Blackhole blackhole;
 
         public BenchmarkEvent(final Blackhole blackhole) {
@@ -40,5 +41,7 @@ public interface BenchmarkListener extends Listener {
         public Class<BenchmarkListener> getListenerType() {
             return BenchmarkListener.class;
         }
+
     }
+
 }

@@ -42,4 +42,5 @@ public abstract class AbstractEvent<L extends Listener> {
      * @return The listener type
      */
     public abstract Class<L> getListenerType();
+
 }

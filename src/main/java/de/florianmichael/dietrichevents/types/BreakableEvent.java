@@ -44,4 +44,5 @@ public abstract class BreakableEvent<L extends Listener> extends AbstractEvent<L
     public void setAbort(boolean abort) {
         this.abort = abort;
     }
+
 }

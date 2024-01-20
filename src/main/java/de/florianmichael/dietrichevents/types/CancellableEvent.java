@@ -42,4 +42,5 @@ public abstract class CancellableEvent<L extends Listener> extends AbstractEvent
     public void setCancelled(boolean cancelled) {
         this.cancelled = cancelled;
     }
+
 }

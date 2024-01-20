@@ -26,7 +26,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.*;
 
 public class DietrichEvents {
-    private final static DietrichEvents GLOBAL = createThreadSafe();
+
+    private static final DietrichEvents GLOBAL = createThreadSafe();
 
     public static DietrichEvents global() {
         return GLOBAL;
@@ -378,4 +379,5 @@ public class DietrichEvents {
         }
         return event;
     }
+
 }
