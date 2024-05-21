@@ -1,7 +1,7 @@
+**This project has been discontinued in favour of [DietrichEvents2](https://github.com/FlorianMichael/DietrichEvents2) which is faster and has more features.**
+
 # DietrichEvents
 A fast and feature rich but still easy to use Event library for Java
-
-#### Note: [DietrichEvents2](https://github.com/FlorianMichael/DietrichEvents2) is out! It's the recommended version to use, as it's faster and has more features.
 
 ## Contact
 If you encounter any issues, please report them on the
